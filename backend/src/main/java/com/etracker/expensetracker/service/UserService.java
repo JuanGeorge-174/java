@@ -2,6 +2,8 @@ package com.etracker.expensetracker.service;
 
 import com.etracker.expensetracker.model.User;
 import com.etracker.expensetracker.repository.UserRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -36,5 +38,12 @@ public class UserService {
         roles.add("ROLE_USER");
         user.setRoles(roles);
         return userRepository.save(user);
+    }
+
+    public User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
     }
 }

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import Navbar from "../components/Navbar";
 import {
   Bell,
@@ -9,27 +10,64 @@ import {
   Wallet,
 } from "lucide-react";
 
-export default function FinTrack() {
+// Icon mapping based on account type
+const iconMap = {
+  Checking: Building2,
+  Savings: PiggyBank,
+  "Credit Card": CreditCard,
+  Investment: Wallet,
+};
+
+export default function Account() {
+  const [accounts, setAccounts] = useState([]);
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [accountName, setAccountName] = useState("");
   const [accountType, setAccountType] = useState("Savings");
   const [initialBalance, setInitialBalance] = useState("0.00");
-  const [linkInstitution, setLinkInstitution] = useState(false);
 
-  const accounts = [
-    { id: 1, name: "Primary Checking", type: "Checking", balance: 5200.0, icon: Building2 },
-    { id: 2, name: "Emergency Fund", type: "Savings", balance: 7300.0, icon: PiggyBank },
-    { id: 3, name: "Travel Rewards Card", type: "Credit Card", balance: 0.0, icon: CreditCard },
-  ];
+  // Fetch accounts from backend on mount
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
 
-  const totalAssets = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const fetchAccounts = async () => {
+    try {
+      const res = await axios.get("http://localhost:8080/api/accounts");
+      setAccounts(res.data);
+    } catch (err) {
+      console.error("Error fetching accounts:", err);
+    }
+  };
 
-  const handleSaveAccount = () => {
-    setShowAddAccount(false);
-    setAccountName("");
-    setAccountType("Savings");
-    setInitialBalance("0.00");
-    setLinkInstitution(false);
+  // ✅ Fixed Save Logic
+  const handleSaveAccount = async () => {
+    if (!accountName.trim() || !initialBalance) {
+      alert("Please fill all required fields");
+      return;
+    }
+
+    const newAccount = {
+      name: accountName,
+      currency: "INR",
+      initialAmount: parseFloat(initialBalance),
+      note: `${accountType} account`,
+    };
+
+    try {
+      await axios.post("http://localhost:8080/api/accounts", newAccount);
+
+      // Refresh accounts after saving
+      await fetchAccounts();
+
+      // ✅ Reset form and close modal
+      setAccountName("");
+      setAccountType("Savings");
+      setInitialBalance("0.00");
+      setShowAddAccount(false);
+    } catch (err) {
+      console.error("Error saving account:", err);
+      alert("Failed to save account. Please try again.");
+    }
   };
 
   const handleCancel = () => {
@@ -37,8 +75,12 @@ export default function FinTrack() {
     setAccountName("");
     setAccountType("Savings");
     setInitialBalance("0.00");
-    setLinkInstitution(false);
   };
+
+  const totalAssets = accounts.reduce(
+    (sum, acc) => sum + (acc.currentBalance || acc.initialAmount || 0),
+    0
+  );
 
   const styles = {
     app: {
@@ -51,7 +93,7 @@ export default function FinTrack() {
       alignItems: "center",
     },
     contentWrapper: {
-      marginTop: 64, // Push content below assumed navbar height
+      marginTop: 64,
       width: "90vw",
       maxWidth: 1024,
       paddingBottom: 32,
@@ -59,7 +101,6 @@ export default function FinTrack() {
     },
     header: {
       backgroundColor: "#1a241d",
-      
       padding: "16px 24px",
       display: "flex",
       justifyContent: "space-between",
@@ -133,32 +174,50 @@ export default function FinTrack() {
       <Navbar />
       <div style={styles.contentWrapper}>
         {!showAddAccount && (
-  <header style={styles.header}>
-    <h1>Accounts Overview</h1>
-    <Bell size={20} />
-  </header>
-)}
-
+          <header style={styles.header}>
+            <h1>Accounts Overview</h1>
+            <Bell size={20} />
+          </header>
+        )}
 
         {!showAddAccount ? (
           <>
+            {/* Total Assets Card */}
             <div style={styles.card}>
               <div style={{ color: "#89a594" }}>Total Assets</div>
-              <div style={{ fontSize: "40px", fontWeight: "bold", color: "#75dc85" }}>
-                ${totalAssets.toFixed(2)}
+              <div
+                style={{
+                  fontSize: "40px",
+                  fontWeight: "bold",
+                  color: "#75dc85",
+                }}
+              >
+                ₹{totalAssets.toFixed(2)}
               </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-              <h2 style={{ color: "#ddd", fontWeight: "bold" }}>Your Accounts</h2>
-              <button onClick={() => setShowAddAccount(true)} style={styles.buttonPrimary}>
+            {/* Account List */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 20,
+              }}
+            >
+              <h2 style={{ color: "#ddd", fontWeight: "bold" }}>
+                Your Accounts
+              </h2>
+              <button
+                onClick={() => setShowAddAccount(true)}
+                style={styles.buttonPrimary}
+              >
                 <Plus size={16} /> Add Account
               </button>
             </div>
 
             <div>
               {accounts.map((acc) => {
-                const Icon = acc.icon;
+                const Icon = iconMap[acc.note?.includes("Credit") ? "Credit Card" : acc.note?.includes("Savings") ? "Savings" : acc.note?.includes("Investment") ? "Investment" : "Checking"];
                 return (
                   <div key={acc.id} style={styles.accountRow}>
                     <div style={styles.accountInfo}>
@@ -166,12 +225,22 @@ export default function FinTrack() {
                         <Icon size={24} color="#75dc85" />
                       </div>
                       <div>
-                        <div style={{ fontWeight: "bold", color: "#ddd" }}>{acc.name}</div>
-                        <div style={{ fontSize: 14, color: "#89a594" }}>{acc.type}</div>
+                        <div style={{ fontWeight: "bold", color: "#ddd" }}>
+                          {acc.name}
+                        </div>
+                        <div style={{ fontSize: 14, color: "#89a594" }}>
+                          {acc.currency || "INR"}
+                        </div>
                       </div>
                     </div>
-                    <div style={{ fontSize: 20, fontWeight: "bold", color: "#75dc85" }}>
-                      ${acc.balance.toFixed(2)}
+                    <div
+                      style={{
+                        fontSize: 20,
+                        fontWeight: "bold",
+                        color: "#75dc85",
+                      }}
+                    >
+                      ₹{(acc.currentBalance || acc.initialAmount || 0).toFixed(2)}
                     </div>
                   </div>
                 );
@@ -179,9 +248,16 @@ export default function FinTrack() {
             </div>
           </>
         ) : (
+          // ✅ Add Account Form
           <main style={{ padding: 24, maxWidth: 640 }}>
+            <h2 style={{ color: "#75dc85", marginBottom: 20 }}>
+              Add New Account
+            </h2>
+
             <div style={{ marginBottom: 20 }}>
-              <label style={{ color: "#ddd", fontWeight: "500" }}>Account Name</label>
+              <label style={{ color: "#ddd", fontWeight: "500" }}>
+                Account Name
+              </label>
               <input
                 type="text"
                 value={accountName}
@@ -192,7 +268,9 @@ export default function FinTrack() {
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ color: "#ddd", fontWeight: "500" }}>Account Type</label>
+              <label style={{ color: "#ddd", fontWeight: "500" }}>
+                Account Type
+              </label>
               <select
                 value={accountType}
                 onChange={(e) => setAccountType(e.target.value)}
@@ -206,24 +284,27 @@ export default function FinTrack() {
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ color: "#ddd", fontWeight: "500" }}>Initial Balance</label>
+              <label style={{ color: "#ddd", fontWeight: "500" }}>
+                Initial Balance
+              </label>
               <input
-                type="text"
+                type="number"
                 value={initialBalance}
                 onChange={(e) => setInitialBalance(e.target.value)}
                 style={styles.input}
+                min="0"
               />
             </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <label
-                style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}
-              >
-               </label>
-            </div>
-
             <div style={{ display: "flex", gap: 12 }}>
-              <button onClick={handleCancel} style={{ ...styles.buttonPrimary, backgroundColor: "#222936", color: "#ddd" }}>
+              <button
+                onClick={handleCancel}
+                style={{
+                  ...styles.buttonPrimary,
+                  backgroundColor: "#222936",
+                  color: "#ddd",
+                }}
+              >
                 Cancel
               </button>
               <button onClick={handleSaveAccount} style={styles.buttonPrimary}>
