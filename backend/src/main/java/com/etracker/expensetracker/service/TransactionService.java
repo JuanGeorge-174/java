@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -14,14 +15,20 @@ public class TransactionService {
     private final TransactionRepository txRepo;
     private final AccountRepository accountRepo;
 
+    public List<Transaction> getAllTransactions(User user) {
+        return txRepo.findByUserOrderByDateDesc(user);
+    }
+
     @Transactional
     public Transaction createTransaction(User user, String type, Double amount, Long accountFromId, Long accountToId, String note) {
         if (amount == null || amount <= 0) throw new RuntimeException("Amount must be positive");
+        
         if ("transfer".equalsIgnoreCase(type)) {
             if (accountFromId == null || accountToId == null) throw new RuntimeException("Both accounts required for transfer");
             Account from = accountRepo.findById(accountFromId).orElseThrow(() -> new RuntimeException("Account not found"));
             Account to = accountRepo.findById(accountToId).orElseThrow(() -> new RuntimeException("Account not found"));
-            if (!from.getUser().getId().equals(user.getId()) || !to.getUser().getId().equals(user.getId())) throw new RuntimeException("Unauthorized");
+            if (!from.getUser().getId().equals(user.getId()) || !to.getUser().getId().equals(user.getId())) 
+                throw new RuntimeException("Unauthorized");
 
             from.setCurrentBalance(from.getCurrentBalance() - amount);
             to.setCurrentBalance(to.getCurrentBalance() + amount);
@@ -29,17 +36,17 @@ public class TransactionService {
             accountRepo.save(to);
 
             Transaction tx = Transaction.builder()
-                    .user(user)
-                    .type("transfer")
-                    .amount(amount)
-                    .date(Instant.now())
-                    .accountFrom(from)
-                    .accountTo(to)
-                    .note(note)
-                    .build();
+                .user(user)
+                .type("transfer")
+                .amount(amount)
+                .date(Instant.now())
+                .accountFrom(from)
+                .accountTo(to)
+                .note(note)
+                .build();
             return txRepo.save(tx);
+            
         } else if ("expense".equalsIgnoreCase(type) || "income".equalsIgnoreCase(type)) {
-            // treat accountFromId as the affected account
             if (accountFromId == null) throw new RuntimeException("Account required");
             Account acct = accountRepo.findById(accountFromId).orElseThrow(() -> new RuntimeException("Account not found"));
             if (!acct.getUser().getId().equals(user.getId())) throw new RuntimeException("Unauthorized");
@@ -49,14 +56,15 @@ public class TransactionService {
             accountRepo.save(acct);
 
             Transaction tx = Transaction.builder()
-                    .user(user)
-                    .type(type)
-                    .amount(amount)
-                    .date(Instant.now())
-                    .accountFrom(acct)
-                    .note(note)
-                    .build();
+                .user(user)
+                .type(type)
+                .amount(amount)
+                .date(Instant.now())
+                .accountFrom(acct)
+                .note(note)
+                .build();
             return txRepo.save(tx);
+            
         } else {
             throw new RuntimeException("Invalid transaction type");
         }

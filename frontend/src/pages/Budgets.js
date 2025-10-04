@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import Navbar from "../components/Navbar";
 import {
   Bell,
@@ -10,6 +11,15 @@ import {
   ShoppingCart,
 } from "lucide-react";
 
+// Icon mapping
+const iconMap = {
+  Dining: Utensils,
+  Groceries: ShoppingBag,
+  Entertainment: Clapperboard,
+  Transportation: Car,
+  Shopping: ShoppingCart,
+};
+
 export default function BudgetsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -18,24 +28,47 @@ export default function BudgetsPage() {
   const [editBudgetCategory, setEditBudgetCategory] = useState("");
   const [editBudgetLimit, setEditBudgetLimit] = useState("");
   const [editingBudgetId, setEditingBudgetId] = useState(null);
+  const [budgets, setBudgets] = useState([]);
 
-  const [budgets, setBudgets] = useState([
-    { id: 1, category: "Dining", spent: 340.9, limit: 500.0, icon: Utensils },
-    { id: 2, category: "Groceries", spent: 482.95, limit: 500.0, icon: ShoppingBag },
-    { id: 3, category: "Entertainment", spent: 102.27, limit: 300.0, icon: Clapperboard },
-    { id: 4, category: "Transportation", spent: 159.09, limit: 200.0, icon: Car },
-    { id: 5, category: "Shopping", spent: 229.5, limit: 450.0, icon: ShoppingCart },
-  ]);
+  // Fetch budgets on mount
+  useEffect(() => {
+    fetchBudgets();
+  }, []);
+
+  const fetchBudgets = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        console.warn("No token found");
+        return;
+      }
+
+      const res = await axios.get("http://localhost:8080/api/budgets", {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      setBudgets(res.data);
+    } catch (err) {
+      console.error("Error fetching budgets:", err);
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        alert("Session expired. Please login again.");
+      }
+    }
+  };
 
   const getProgressColor = (percentage) => {
-    if (percentage >= 95) return "#cbd8cc"; // yellow-grayish
-    if (percentage >= 75) return "#ff8c42"; // orange
-    return "#75dc85"; // green
+    if (percentage >= 95) return "#cbd8cc";
+    if (percentage >= 75) return "#ff8c42";
+    return "#75dc85";
   };
 
   const getPercentage = (spent, limit) => Math.round((spent / limit) * 100);
 
   const openModal = () => setModalOpen(true);
+  
   const closeModal = () => {
     setModalOpen(false);
     setNewBudgetCategory("");
@@ -44,8 +77,8 @@ export default function BudgetsPage() {
 
   const openEditModal = (budget) => {
     setEditingBudgetId(budget.id);
-    setEditBudgetCategory(budget.category);
-    setEditBudgetLimit(budget.limit.toString());
+    setEditBudgetCategory(budget.name);
+    setEditBudgetLimit(budget.amount.toString());
     setEditModalOpen(true);
   };
 
@@ -56,35 +89,102 @@ export default function BudgetsPage() {
     setEditModalOpen(false);
   };
 
-  const handleAddBudget = (e) => {
+  const handleAddBudget = async (e) => {
     e.preventDefault();
+
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      alert("Please login first");
+      return;
+    }
 
     const newBudget = {
-      id: budgets.length + 1,
-      category: newBudgetCategory,
-      spent: 0,
-      limit: parseFloat(newBudgetLimit),
-      icon: ShoppingBag, // default icon for simplicity
+      name: newBudgetCategory,
+      amount: parseFloat(newBudgetLimit),
+      period: "monthly",
+      categories: [newBudgetCategory],
+      alertThresholdPercent: 80
     };
-    setBudgets((prev) => [...prev, newBudget]);
-    closeModal();
+
+    try {
+      await axios.post("http://localhost:8080/api/budgets", newBudget, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      await fetchBudgets();
+      closeModal();
+    } catch (err) {
+      console.error("Error adding budget:", err);
+      alert("Failed to add budget. Please try again.");
+    }
   };
 
-  const handleEditBudget = (e) => {
+  const handleEditBudget = async (e) => {
     e.preventDefault();
 
-    setBudgets((prevBudgets) =>
-      prevBudgets.map((b) =>
-        b.id === editingBudgetId
-          ? {
-              ...b,
-              category: editBudgetCategory,
-              limit: parseFloat(editBudgetLimit),
-            }
-          : b
-      )
-    );
-    closeEditModal();
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      alert("Please login first");
+      return;
+    }
+
+    const updatedBudget = {
+      name: editBudgetCategory,
+      amount: parseFloat(editBudgetLimit),
+      period: "monthly",
+      categories: [editBudgetCategory],
+      alertThresholdPercent: 80
+    };
+
+    try {
+      await axios.put(
+        `http://localhost:8080/api/budgets/${editingBudgetId}`, 
+        updatedBudget,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      await fetchBudgets();
+      closeEditModal();
+    } catch (err) {
+      console.error("Error updating budget:", err);
+      alert("Failed to update budget. Please try again.");
+    }
+  };
+
+  const handleDeleteBudget = async (budgetId) => {
+    if (!window.confirm("Are you sure you want to delete this budget?")) {
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      alert("Please login first");
+      return;
+    }
+
+    try {
+      await axios.delete(`http://localhost:8080/api/budgets/${budgetId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      await fetchBudgets();
+    } catch (err) {
+      console.error("Error deleting budget:", err);
+      alert("Failed to delete budget. Please try again.");
+    }
   };
 
   const styles = {
@@ -96,67 +196,6 @@ export default function BudgetsPage() {
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-    },
-    navbar: {
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 64,
-      backgroundColor: "#152018",
-      borderBottom: "1px solid #374151",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "0 40px",
-      zIndex: 1000,
-    },
-    navbarGroup: {
-      display: "flex",
-      alignItems: "center",
-      gap: 32,
-    },
-    brand: {
-      display: "flex",
-      alignItems: "center",
-      gap: 12,
-      color: "#ddd",
-      fontWeight: "bold",
-      fontSize: 20,
-    },
-    navLinks: {
-      display: "flex",
-      gap: 24,
-    },
-    navLink: {
-      color: "#89a594",
-      textDecoration: "none",
-    },
-    navLinkActive: {
-      color: "#75dc85",
-      fontWeight: 600,
-      textDecoration: "none",
-    },
-    userControls: {
-      display: "flex",
-      alignItems: "center",
-      gap: 16,
-      color: "#a3b8a5",
-      cursor: "pointer",
-      background: "none",
-      border: "none",
-    },
-    userAvatarWrapper: {
-      width: 40,
-      height: 40,
-      borderRadius: "50%",
-      backgroundColor: "#222936",
-      overflow: "hidden",
-    },
-    userAvatar: {
-      width: "100%",
-      height: "100%",
-      objectFit: "cover",
     },
     contentWrapper: {
       marginTop: 80,
@@ -198,7 +237,6 @@ export default function BudgetsPage() {
       borderRadius: 12,
       padding: 20,
       boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-      cursor: "pointer",
     },
     budgetItemHeader: {
       display: "flex",
@@ -281,22 +319,32 @@ export default function BudgetsPage() {
       fontWeight: "bold",
       userSelect: "none",
     },
+    deleteButton: {
+      padding: "8px 16px",
+      borderRadius: 6,
+      border: "none",
+      backgroundColor: "#dc2626",
+      color: "#fff",
+      cursor: "pointer",
+      fontWeight: "bold",
+      fontSize: 14,
+      marginTop: 12,
+    },
+    editableArea: {
+      cursor: "pointer",
+    }
   };
 
   return (
     <div style={styles.app}>
-      {/* Navbar */}
       <Navbar />
 
-      {/* Main content */}
       <main style={styles.contentWrapper}>
-        {/* Page Header */}
         <div style={styles.pageHeader}>
           <h1 style={styles.pageTitle}>Budgets</h1>
           <p style={styles.pageSubtext}>Set and manage your spending limits for different categories.</p>
         </div>
 
-        {/* Spending Limits Header */}
         <div style={styles.limitsHeader}>
           <h2 style={styles.limitsTitle}>Spending Limits</h2>
           <button style={styles.addButton} onClick={openModal}>
@@ -305,46 +353,71 @@ export default function BudgetsPage() {
           </button>
         </div>
 
-        {/* Budget Items List */}
         <div style={styles.budgetList}>
-          {budgets.map((budget) => {
-            const Icon = budget.icon;
-            const percentage = getPercentage(budget.spent, budget.limit);
-            const progressColor = getProgressColor(percentage);
+          {budgets.length === 0 ? (
+            <div style={{
+              textAlign: "center",
+              padding: "40px",
+              color: "#89a594"
+            }}>
+              No budgets yet. Click "Add New Budget" to create one.
+            </div>
+          ) : (
+            budgets.map((budget) => {
+              const Icon = iconMap[budget.name] || ShoppingBag;
+              const percentage = getPercentage(0, budget.amount);
+              const progressColor = getProgressColor(percentage);
 
-            return (
-              <div key={budget.id} style={styles.budgetItem} onClick={() => openEditModal(budget)}>
-                <div style={styles.budgetItemHeader}>
-                  <div style={styles.budgetItemInfo}>
-                    <div style={styles.budgetIconWrapper}>
-                      <Icon size={22} color="#75dc85" />
+              return (
+                <div key={budget.id} style={styles.budgetItem}>
+                  <div style={styles.editableArea} onClick={() => openEditModal(budget)}>
+                    <div style={styles.budgetItemHeader}>
+                      <div style={styles.budgetItemInfo}>
+                        <div style={styles.budgetIconWrapper}>
+                          <Icon size={22} color="#75dc85" />
+                        </div>
+                        <div>
+                          <h3 style={styles.budgetCategory}>{budget.name}</h3>
+                          <p style={styles.budgetAmount}>
+                            ₹0.00 / ₹{budget.amount.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                      <div style={styles.percentageText}>{percentage}%</div>
                     </div>
-                    <div>
-                      <h3 style={styles.budgetCategory}>{budget.category}</h3>
-                      <p style={styles.budgetAmount}>
-                        ${budget.spent.toFixed(2)} / ${budget.limit.toFixed(2)}
-                      </p>
+
+                    <div style={styles.progressBar}>
+                      <div style={{ 
+                        ...styles.progressFill, 
+                        width: `${Math.min(percentage, 100)}%`, 
+                        backgroundColor: progressColor 
+                      }} />
                     </div>
                   </div>
-                  <div style={styles.percentageText}>{percentage}%</div>
+                  
+                  <button 
+                    style={styles.deleteButton}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteBudget(budget.id);
+                    }}
+                  >
+                    Delete Budget
+                  </button>
                 </div>
-
-                <div style={styles.progressBar}>
-                  <div style={{ ...styles.progressFill, width: `${Math.min(percentage, 100)}%`, backgroundColor: progressColor }} />
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
-        {/* Modal for adding budget */}
+        {/* Add Budget Modal */}
         {modalOpen && (
           <div style={styles.modalOverlay} onClick={closeModal}>
             <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
               <h2 style={styles.modalTitle}>Add New Budget</h2>
               <form onSubmit={handleAddBudget}>
                 <label htmlFor="budgetCategory" style={styles.modalLabel}>
-                  Category
+                  Category *
                 </label>
                 <input
                   id="budgetCategory"
@@ -357,7 +430,7 @@ export default function BudgetsPage() {
                 />
 
                 <label htmlFor="budgetLimit" style={styles.modalLabel}>
-                  Spending Limit
+                  Spending Limit *
                 </label>
                 <input
                   id="budgetLimit"
@@ -372,10 +445,10 @@ export default function BudgetsPage() {
                 />
 
                 <div style={styles.modalButtons}>
-                  <button type="button" style={{ ...styles.modalButton, ...styles.modalCancelButton }} onClick={closeModal}>
+                  <button type="button" style={styles.modalCancelButton} onClick={closeModal}>
                     Cancel
                   </button>
-                  <button type="submit" style={{ ...styles.modalButton, ...styles.modalSaveButton }}>
+                  <button type="submit" style={styles.modalSaveButton}>
                     Save
                   </button>
                 </div>
@@ -384,14 +457,14 @@ export default function BudgetsPage() {
           </div>
         )}
 
-        {/* Modal for editing budget */}
+        {/* Edit Budget Modal */}
         {editModalOpen && (
           <div style={styles.modalOverlay} onClick={closeEditModal}>
             <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
               <h2 style={styles.modalTitle}>Edit Budget</h2>
               <form onSubmit={handleEditBudget}>
                 <label htmlFor="editBudgetCategory" style={styles.modalLabel}>
-                  Category
+                  Category *
                 </label>
                 <input
                   id="editBudgetCategory"
@@ -403,7 +476,7 @@ export default function BudgetsPage() {
                 />
 
                 <label htmlFor="editBudgetLimit" style={styles.modalLabel}>
-                  Spending Limit
+                  Spending Limit *
                 </label>
                 <input
                   id="editBudgetLimit"
@@ -417,10 +490,10 @@ export default function BudgetsPage() {
                 />
 
                 <div style={styles.modalButtons}>
-                  <button type="button" style={{ ...styles.modalButton, ...styles.modalCancelButton }} onClick={closeEditModal}>
+                  <button type="button" style={styles.modalCancelButton} onClick={closeEditModal}>
                     Cancel
                   </button>
-                  <button type="submit" style={{ ...styles.modalButton, ...styles.modalSaveButton }}>
+                  <button type="submit" style={styles.modalSaveButton}>
                     Save Changes
                   </button>
                 </div>

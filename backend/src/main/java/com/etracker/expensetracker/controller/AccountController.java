@@ -21,13 +21,17 @@ public class AccountController {
 
     @GetMapping
     public ResponseEntity<List<Account>> list() {
-        User user = userService.getCurrentUser();
+        User user = userService.getCurrentUser()
+                      .orElseThrow(() -> new RuntimeException("User not authenticated"));
+
         return ResponseEntity.ok(accountService.list(user));
     }
 
     @PostMapping
     public ResponseEntity<Account> create(@Valid @RequestBody AccountRequest req) {
-        User user = userService.getCurrentUser();
+        User user = userService.getCurrentUser()
+                      .orElseThrow(() -> new RuntimeException("User not authenticated"));
+
         Account account = Account.builder()
                 .name(req.getName())
                 .currency(req.getCurrency())
@@ -40,7 +44,9 @@ public class AccountController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Account> update(@PathVariable Long id, @Valid @RequestBody AccountRequest req) {
-        User user = userService.getCurrentUser();
+        User user = userService.getCurrentUser()
+                      .orElseThrow(() -> new RuntimeException("User not authenticated"));
+
         Account updated = Account.builder()
                 .name(req.getName())
                 .note(req.getNote())
@@ -50,7 +56,9 @@ public class AccountController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        User user = userService.getCurrentUser();
+        User user = userService.getCurrentUser()
+                      .orElseThrow(() -> new RuntimeException("User not authenticated"));
+
         accountService.delete(id, user);
         return ResponseEntity.noContent().build();
     }

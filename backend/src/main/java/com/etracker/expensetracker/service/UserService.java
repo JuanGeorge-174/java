@@ -40,10 +40,14 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public User getCurrentUser() {
+    public Optional<User> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null 
+                || !authentication.isAuthenticated() 
+                || authentication.getPrincipal().equals("anonymousUser")) {
+            return Optional.empty();
+        }
         String username = authentication.getName();
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+        return userRepository.findByUsername(username);
     }
 }

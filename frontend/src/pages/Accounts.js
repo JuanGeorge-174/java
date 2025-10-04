@@ -32,17 +32,38 @@ export default function Account() {
 
   const fetchAccounts = async () => {
     try {
-      const res = await axios.get("http://localhost:8080/api/accounts");
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        console.warn("No token found");
+        return;
+      }
+
+      const res = await axios.get("http://localhost:8080/api/accounts", {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       setAccounts(res.data);
     } catch (err) {
       console.error("Error fetching accounts:", err);
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        alert("Session expired. Please login again.");
+      }
     }
   };
 
-  // ✅ Fixed Save Logic
+  // Save account with authentication
   const handleSaveAccount = async () => {
     if (!accountName.trim() || !initialBalance) {
       alert("Please fill all required fields");
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      alert("Please login first");
       return;
     }
 
@@ -54,19 +75,29 @@ export default function Account() {
     };
 
     try {
-      await axios.post("http://localhost:8080/api/accounts", newAccount);
+      await axios.post("http://localhost:8080/api/accounts", newAccount, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
       // Refresh accounts after saving
       await fetchAccounts();
 
-      // ✅ Reset form and close modal
+      // Reset form and close modal
       setAccountName("");
       setAccountType("Savings");
       setInitialBalance("0.00");
       setShowAddAccount(false);
+      
     } catch (err) {
       console.error("Error saving account:", err);
-      alert("Failed to save account. Please try again.");
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        alert("Session expired. Please login again.");
+      } else {
+        alert("Failed to save account. Please try again.");
+      }
     }
   };
 
@@ -128,6 +159,19 @@ export default function Account() {
       boxSizing: "border-box",
       fontFamily: "sans-serif",
     },
+    select: {
+      width: "100%",
+      backgroundColor: "#222936",
+      border: "1px solid #25633d",
+      borderRadius: "8px",
+      padding: "10px 14px",
+      color: "#ddd",
+      fontSize: "15px",
+      marginTop: "6px",
+      boxSizing: "border-box",
+      fontFamily: "sans-serif",
+      cursor: "pointer",
+    },
     buttonPrimary: {
       backgroundColor: "#75dc85",
       border: "none",
@@ -135,6 +179,20 @@ export default function Account() {
       padding: "12px 24px",
       fontWeight: "bold",
       color: "#152018",
+      cursor: "pointer",
+      transition: "0.2s",
+      userSelect: "none",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    },
+    buttonSecondary: {
+      backgroundColor: "#222936",
+      border: "1px solid #25633d",
+      borderRadius: "10px",
+      padding: "12px 24px",
+      fontWeight: "bold",
+      color: "#ddd",
       cursor: "pointer",
       transition: "0.2s",
       userSelect: "none",
@@ -152,6 +210,7 @@ export default function Account() {
       boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
       cursor: "pointer",
       marginBottom: "12px",
+      transition: "background-color 0.2s",
     },
     accountInfo: {
       display: "flex",
@@ -210,45 +269,67 @@ export default function Account() {
               <button
                 onClick={() => setShowAddAccount(true)}
                 style={styles.buttonPrimary}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#65cc75"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#75dc85"}
               >
                 <Plus size={16} /> Add Account
               </button>
             </div>
 
             <div>
-              {accounts.map((acc) => {
-                const Icon = iconMap[acc.note?.includes("Credit") ? "Credit Card" : acc.note?.includes("Savings") ? "Savings" : acc.note?.includes("Investment") ? "Investment" : "Checking"];
-                return (
-                  <div key={acc.id} style={styles.accountRow}>
-                    <div style={styles.accountInfo}>
-                      <div style={styles.accountIconContainer}>
-                        <Icon size={24} color="#75dc85" />
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: "bold", color: "#ddd" }}>
-                          {acc.name}
-                        </div>
-                        <div style={{ fontSize: 14, color: "#89a594" }}>
-                          {acc.currency || "INR"}
-                        </div>
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 20,
-                        fontWeight: "bold",
-                        color: "#75dc85",
-                      }}
+              {accounts.length === 0 ? (
+                <div style={{
+                  textAlign: "center",
+                  padding: "40px",
+                  color: "#89a594"
+                }}>
+                  No accounts yet. Click "Add Account" to create one.
+                </div>
+              ) : (
+                accounts.map((acc) => {
+                  const Icon = iconMap[
+                    acc.note?.includes("Credit") ? "Credit Card" : 
+                    acc.note?.includes("Savings") ? "Savings" : 
+                    acc.note?.includes("Investment") ? "Investment" : 
+                    "Checking"
+                  ];
+                  return (
+                    <div 
+                      key={acc.id} 
+                      style={styles.accountRow}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#2a3440"}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#222936"}
                     >
-                      ₹{(acc.currentBalance || acc.initialAmount || 0).toFixed(2)}
+                      <div style={styles.accountInfo}>
+                        <div style={styles.accountIconContainer}>
+                          <Icon size={24} color="#75dc85" />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: "bold", color: "#ddd" }}>
+                            {acc.name}
+                          </div>
+                          <div style={{ fontSize: 14, color: "#89a594" }}>
+                            {acc.currency || "INR"}
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 20,
+                          fontWeight: "bold",
+                          color: "#75dc85",
+                        }}
+                      >
+                        ₹{(acc.currentBalance || acc.initialAmount || 0).toFixed(2)}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </>
         ) : (
-          // ✅ Add Account Form
+          // Add Account Form
           <main style={{ padding: 24, maxWidth: 640 }}>
             <h2 style={{ color: "#75dc85", marginBottom: 20 }}>
               Add New Account
@@ -256,14 +337,15 @@ export default function Account() {
 
             <div style={{ marginBottom: 20 }}>
               <label style={{ color: "#ddd", fontWeight: "500" }}>
-                Account Name
+                Account Name *
               </label>
               <input
                 type="text"
                 value={accountName}
                 onChange={(e) => setAccountName(e.target.value)}
-                placeholder="My Savings Account"
+                placeholder="e.g., My Savings Account"
                 style={styles.input}
+                required
               />
             </div>
 
@@ -274,7 +356,7 @@ export default function Account() {
               <select
                 value={accountType}
                 onChange={(e) => setAccountType(e.target.value)}
-                style={styles.input}
+                style={styles.select}
               >
                 <option>Savings</option>
                 <option>Checking</option>
@@ -285,7 +367,7 @@ export default function Account() {
 
             <div style={{ marginBottom: 20 }}>
               <label style={{ color: "#ddd", fontWeight: "500" }}>
-                Initial Balance
+                Initial Balance *
               </label>
               <input
                 type="number"
@@ -293,21 +375,26 @@ export default function Account() {
                 onChange={(e) => setInitialBalance(e.target.value)}
                 style={styles.input}
                 min="0"
+                step="0.01"
+                required
               />
             </div>
 
             <div style={{ display: "flex", gap: 12 }}>
               <button
                 onClick={handleCancel}
-                style={{
-                  ...styles.buttonPrimary,
-                  backgroundColor: "#222936",
-                  color: "#ddd",
-                }}
+                style={styles.buttonSecondary}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#2a3440"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#222936"}
               >
                 Cancel
               </button>
-              <button onClick={handleSaveAccount} style={styles.buttonPrimary}>
+              <button 
+                onClick={handleSaveAccount} 
+                style={styles.buttonPrimary}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#65cc75"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#75dc85"}
+              >
                 Save Account
               </button>
             </div>

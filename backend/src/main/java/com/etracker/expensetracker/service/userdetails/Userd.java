@@ -22,20 +22,20 @@ public class Userd implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+            .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
         var authorities = user.getRoles().stream()
             .map(SimpleGrantedAuthority::new)
             .collect(Collectors.toList());
 
-        return new CustomUserDetails(
-            user.getUsername(),
-            user.getPassword(),
-            authorities,
-            true,
-            true,
-            true,
-            true
-        );
+        return org.springframework.security.core.userdetails.User
+            .withUsername(user.getUsername())
+            .password(user.getPassword())
+            .authorities(authorities)
+            .accountExpired(false)
+            .accountLocked(false)
+            .credentialsExpired(false)
+            .disabled(false)
+            .build();
     }
 }

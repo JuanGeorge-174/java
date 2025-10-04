@@ -21,20 +21,25 @@ public class ExpenseController {
 
     @GetMapping
     public ResponseEntity<List<Expense>> list() {
-        User user = userService.getCurrentUser();
+       User user = userService.getCurrentUser()
+                      .orElseThrow(() -> new RuntimeException("User not authenticated"));
         return ResponseEntity.ok(expenseService.list(user));
     }
 
     @PostMapping
     public ResponseEntity<Expense> create(@Valid @RequestBody ExpenseRequest req) {
-        User user = userService.getCurrentUser();
+        User user = userService.getCurrentUser()
+                      .orElseThrow(() -> new RuntimeException("User not authenticated"));
+
         Expense saved = expenseService.createExpense(user, req.getAccountId(), req.getAmount(), req.getCategory(), req.getDescription(), req.getBudgetId(), req.getDate());
         return ResponseEntity.status(201).body(saved);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        User user = userService.getCurrentUser();
+        User user = userService.getCurrentUser()
+                      .orElseThrow(() -> new RuntimeException("User not authenticated"));
+
         expenseService.deleteExpense(id, user);
         return ResponseEntity.noContent().build();
     }
