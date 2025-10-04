@@ -1,0 +1,90 @@
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(18, 18, 18, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Modal content box */
+.modal-content {
+  background-color: #1f2937; /* expense.css bg color */
+  color: #e6e6e6; /* expense.css text color */
+  padding: 1.5rem 2rem;
+  border-radius: 0.5rem;
+  width: 400px;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+}
+
+.modal-content h2 {
+  margin-bottom: 1rem;
+}
+
+.transaction-form label {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.transaction-form input,
+.transaction-form select {
+  margin-top: 0.25rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #374151;
+  border-radius: 0.3rem;
+  background-color: #111827;
+  color: #e6e6e6;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.25s ease;
+}
+
+.transaction-form input:focus,
+.transaction-form select:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.submit-btn {
+  background-color: #22c55e;
+  color: #111827;
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.3rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+}
+
+.submit-btn:hover {
+  background-color: #16a34a;
+}
+
+.cancel-btn {
+  background-color: transparent;
+  color: #e6e6e6;
+  border: 1px solid #e6e6e6;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.cancel-btn:hover {
+  background-color: #e6e6e6;
+  color: #111827;
+}

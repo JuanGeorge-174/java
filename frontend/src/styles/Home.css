@@ -1,0 +1,270 @@
+/* Reset/change box sizing and basic styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  color: #ddd;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #1a241d;
+}
+
+/* Container Flexbox */
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: #1a241d;
+  color: #ddd;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background-color: #152018;
+  padding: 30px 20px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.logo {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #75dc85;
+  margin-bottom: 35px;
+  user-select: none;
+}
+
+.menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex-grow: 1;
+}
+.menu li a {
+  color: #a3b8a5;         /* normal text color */
+  text-decoration: none;  /* remove underline */
+  display: flex;
+  align-items: center;
+  padding: 13px 10px;
+  border-radius: 8px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.menu li a.active, 
+.menu li a:hover {
+  background-color: #25633d;
+  color: #75dc85;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.menu li {
+  padding: 13px 10px;
+  margin-bottom: 18px;
+  font-size: 1rem;
+  color: #a3b8a5;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.menu li.active, 
+.menu li:hover {
+  background-color: #25633d;
+  color: #75dc85;
+  font-weight: 600;
+}
+
+/* Main Content */
+.main-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 32px 40px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar styling for main content */
+.main-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background-color: rgba(117, 220, 133, 0.8);
+  border-radius: 5px;
+}
+
+.main-content::-webkit-scrollbar-track {
+  background-color: #152018;
+}
+
+/* Top Bar */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 34px;
+}
+
+.topbar h2 {
+  color: white;
+  font-weight: 500;
+  font-size: 1.75rem;
+}
+
+.topbar-right {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+}
+
+.notification-btn {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: #a3b8a5;
+  cursor: pointer;
+  user-select: none;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  background-color: #75dc85;
+  border-radius: 50%;
+  font-size: 1.7rem;
+  color: #152018;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 700;
+  user-select: none;
+}
+
+/* Cards Layout */
+.cards-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 30px 40px;
+  margin-bottom: 50px;
+}
+
+/* Cards Styling */
+.card {
+  background-color: #222936;
+  padding: 24px 28px;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.card-title {
+  color: #a3b8a5;
+  font-weight: 500;
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+  user-select: none;
+}
+
+.spending-summary .amount {
+  font-size: 2.75rem;
+  font-weight: 700;
+  color: #75dc85;
+  margin-bottom: 16px;
+}
+
+.progress-bar {
+  height: 11px;
+  background-color: #565e5f;
+  border-radius: 32px;
+  position: relative;
+  overflow: hidden;
+  margin: 10px 0 18px;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #75dc85;
+  border-radius: 32px;
+}
+
+.progress-fill.grey {
+  background-color: #565e5f;
+}
+
+.progress-text {
+  font-size: 0.86rem;
+  color: #a3b8a5;
+  user-select: none;
+}
+
+/* Budget Items */
+.budget-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 18px;
+  color: #cbd8cc;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.budget-item > span:first-child {
+  margin-bottom: 6px;
+}
+
+.budget-item > span:last-child {
+  align-self: flex-end;
+  margin-top: -28px;
+  color: #89a594;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+/* Recent Transactions */
+.transactions {
+  background-color: #222936;
+  padding: 26px 28px;
+  border-radius: 14px;
+}
+
+.transactions .card-title {
+  margin-bottom: 28px;
+}
+
+.transactions ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.transactions li {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #3a424c;
+  padding: 14px 0;
+  font-size: 1.1rem;
+  color: #a3b8a5;
+  user-select: none;
+}
+
+.transactions li > span:first-child {
+  font-weight: 600;
+  color: #c8d6c9;
+  display: flex;
+  flex-direction: column;
+}
+
+.transactions li .amount {
+  font-weight: 600;
+  color: #75dc85;
+}
