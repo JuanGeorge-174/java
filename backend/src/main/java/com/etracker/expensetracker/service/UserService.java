@@ -39,6 +39,9 @@ public class UserService {
         user.setRoles(roles);
         return userRepository.save(user);
     }
+    public User save(User user) {
+    return userRepository.save(user);
+}
 
     public Optional<User> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

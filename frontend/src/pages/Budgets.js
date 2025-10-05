@@ -1,4 +1,3 @@
-// Replace your entire BudgetsPage.js with this code
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
@@ -9,6 +8,7 @@ import {
   Clapperboard,
   Car,
   ShoppingCart,
+  Edit2,
 } from "lucide-react";
 import { useCategories } from "../hooks/useCategories";
 
@@ -23,6 +23,7 @@ const iconMap = {
 export default function BudgetsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [newBudgetCategory, setNewBudgetCategory] = useState("");
   const [newBudgetLimit, setNewBudgetLimit] = useState("");
   const [editBudgetCategory, setEditBudgetCategory] = useState("");
@@ -30,13 +31,15 @@ export default function BudgetsPage() {
   const [editingBudgetId, setEditingBudgetId] = useState(null);
   const [budgets, setBudgets] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [monthlyBudgetLimit, setMonthlyBudgetLimit] = useState(null);
+  const [tempMonthlyLimit, setTempMonthlyLimit] = useState("");
   const { categories } = useCategories();
 
   useEffect(() => {
     fetchBudgets();
     fetchTransactions();
+    fetchMonthlyLimit();
     
-    // Listen for transaction updates
     const handleUpdate = () => {
       fetchTransactions();
     };
@@ -72,6 +75,20 @@ export default function BudgetsPage() {
     }
   };
 
+  const fetchMonthlyLimit = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const res = await axios.get("http://localhost:8080/api/user/settings", {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setMonthlyBudgetLimit(res.data.monthlyBudgetLimit);
+    } catch (err) {
+      console.error("Error fetching monthly limit:", err);
+    }
+  };
+
   const calculateSpending = (categoryName) => {
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -91,6 +108,10 @@ export default function BudgetsPage() {
       .reduce((sum, txn) => sum + txn.amount, 0);
   };
 
+  const getTotalAllocated = () => {
+    return budgets.reduce((sum, b) => sum + b.amount, 0);
+  };
+
   const getProgressColor = (percentage) => {
     if (percentage >= 95) return "#dc2626";
     if (percentage >= 75) return "#ff8c42";
@@ -102,6 +123,30 @@ export default function BudgetsPage() {
     return Math.min(Math.round((spent / limit) * 100), 100);
   };
 
+  const handleSetMonthlyLimit = async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      await axios.put("http://localhost:8080/api/user/settings", {
+        monthlyBudgetLimit: parseFloat(tempMonthlyLimit)
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      setMonthlyBudgetLimit(parseFloat(tempMonthlyLimit));
+      setLimitModalOpen(false);
+      window.dispatchEvent(new Event('budgetUpdated'));
+    } catch (err) {
+      console.error("Error setting monthly limit:", err);
+      alert("Failed to set monthly limit");
+    }
+  };
+
   const handleAddBudget = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem('token');
@@ -110,11 +155,28 @@ export default function BudgetsPage() {
       return;
     }
 
-    // Check if budget already exists for this category
     const existingBudget = budgets.find(b => b.name === newBudgetCategory);
     if (existingBudget) {
       alert(`A budget for "${newBudgetCategory}" already exists. Please edit the existing budget instead.`);
       return;
+    }
+
+    if (monthlyBudgetLimit) {
+      const currentTotal = getTotalAllocated();
+      const newTotal = currentTotal + parseFloat(newBudgetLimit);
+      
+      if (newTotal > monthlyBudgetLimit) {
+        const remaining = monthlyBudgetLimit - currentTotal;
+        alert(
+          `Cannot add this budget!\n\n` +
+          `Monthly Budget Limit: ₹${monthlyBudgetLimit.toFixed(2)}\n` +
+          `Currently Allocated: ₹${currentTotal.toFixed(2)}\n` +
+          `Trying to add: ₹${parseFloat(newBudgetLimit).toFixed(2)}\n` +
+          `Remaining: ₹${remaining.toFixed(2)}\n\n` +
+          `The sum of category budgets cannot exceed your monthly limit.`
+        );
+        return;
+      }
     }
 
     try {
@@ -182,7 +244,11 @@ export default function BudgetsPage() {
     }
   };
 
-  const openModal = () => setModalOpen(true);
+  const openModal = () => {
+    setNewBudgetCategory("");
+    setNewBudgetLimit("");
+    setModalOpen(true);
+  };
   const closeModal = () => {
     setModalOpen(false);
     setNewBudgetCategory("");
@@ -203,12 +269,34 @@ export default function BudgetsPage() {
     setEditModalOpen(false);
   };
 
+  const openLimitModal = () => {
+    setTempMonthlyLimit(monthlyBudgetLimit?.toString() || "");
+    setLimitModalOpen(true);
+  };
+
+  const closeLimitModal = () => {
+    setLimitModalOpen(false);
+    setTempMonthlyLimit("");
+  };
+
+  const totalAllocated = getTotalAllocated();
+  const remaining = monthlyBudgetLimit ? monthlyBudgetLimit - totalAllocated : null;
+
   const styles = {
     app: { minHeight: "100vh", backgroundColor: "#1a241d", fontFamily: "sans-serif", color: "#a3b8a5", display: "flex", flexDirection: "column", alignItems: "center" },
     contentWrapper: { marginTop: 80, width: "95vw", maxWidth: 1200, padding: "0 32px 48px", boxSizing: "border-box" },
     pageHeader: { marginBottom: 48 },
     pageTitle: { fontSize: 32, fontWeight: "bold", color: "#fff", marginBottom: 12 },
     pageSubtext: { fontSize: 16, color: "#89a594" },
+    limitCard: { backgroundColor: "#222936", borderRadius: 12, padding: 24, marginBottom: 32, boxShadow: "0 2px 6px rgba(0,0,0,0.4)" },
+    limitHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+    limitTitle: { fontSize: 18, fontWeight: 600, color: "#ddd" },
+    editButton: { backgroundColor: "transparent", border: "1px solid #75dc85", color: "#75dc85", padding: "6px 12px", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 14 },
+    limitInfo: { display: "flex", gap: 32, color: "#a3b8a5" },
+    limitItem: { display: "flex", flexDirection: "column", gap: 4 },
+    limitLabel: { fontSize: 13, color: "#89a594" },
+    limitValue: { fontSize: 24, fontWeight: "bold", color: "#75dc85" },
+    warningText: { fontSize: 13, color: "#ff8c42", marginTop: 8 },
     limitsHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 },
     limitsTitle: { fontSize: 22, fontWeight: 600, color: "#ddd" },
     addButton: { backgroundColor: "#75dc85", border: "none", padding: "12px 24px", borderRadius: 8, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "#152018" },
@@ -231,7 +319,8 @@ export default function BudgetsPage() {
     modalCancelButton: { padding: "10px 24px", borderRadius: 8, border: "1px solid #a3b8a5", backgroundColor: "transparent", color: "#a3b8a5", cursor: "pointer", fontWeight: "bold" },
     modalSaveButton: { padding: "10px 24px", borderRadius: 8, border: "none", backgroundColor: "#75dc85", color: "#152018", cursor: "pointer", fontWeight: "bold" },
     deleteButton: { padding: "8px 16px", borderRadius: 6, border: "none", backgroundColor: "#dc2626", color: "#fff", cursor: "pointer", fontWeight: "bold", fontSize: 14, marginTop: 12 },
-    editableArea: { cursor: "pointer" }
+    editableArea: { cursor: "pointer" },
+    infoBox: { backgroundColor: "#152018", border: "1px solid #25633d", borderRadius: 8, padding: 12, fontSize: 13, color: "#a3b8a5", marginBottom: 20 }
   };
 
   return (
@@ -240,21 +329,62 @@ export default function BudgetsPage() {
       <main style={styles.contentWrapper}>
         <div style={styles.pageHeader}>
           <h1 style={styles.pageTitle}>Budgets</h1>
-          <p style={styles.pageSubtext}>Set and manage your spending limits for different categories.</p>
+          <p style={styles.pageSubtext}>Set your monthly budget limit and manage category spending limits.</p>
+        </div>
+
+        {/* Monthly Budget Limit Card */}
+        <div style={styles.limitCard}>
+          <div style={styles.limitHeader}>
+            <div style={styles.limitTitle}>Monthly Budget Overview</div>
+            <button style={styles.editButton} onClick={openLimitModal}>
+              <Edit2 size={16} />
+              {monthlyBudgetLimit ? 'Edit Limit' : 'Set Limit'}
+            </button>
+          </div>
+          
+          {monthlyBudgetLimit ? (
+            <>
+              <div style={styles.limitInfo}>
+                <div style={styles.limitItem}>
+                  <div style={styles.limitLabel}>Monthly Limit</div>
+                  <div style={styles.limitValue}>₹{monthlyBudgetLimit.toFixed(2)}</div>
+                </div>
+                <div style={styles.limitItem}>
+                  <div style={styles.limitLabel}>Allocated</div>
+                  <div style={{ ...styles.limitValue, color: totalAllocated > monthlyBudgetLimit ? "#dc2626" : "#ddd" }}>
+                    ₹{totalAllocated.toFixed(2)}
+                  </div>
+                </div>
+                <div style={styles.limitItem}>
+                  <div style={styles.limitLabel}>Remaining</div>
+                  <div style={{ ...styles.limitValue, color: remaining < 0 ? "#dc2626" : "#75dc85" }}>
+                    ₹{remaining.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+              {remaining < 0 && (
+                <div style={styles.warningText}>⚠️ Warning: You've allocated more than your monthly limit!</div>
+              )}
+            </>
+          ) : (
+            <div style={{ color: "#89a594", fontSize: 14 }}>
+              No monthly limit set. Click "Set Limit" to define your total monthly budget.
+            </div>
+          )}
         </div>
 
         <div style={styles.limitsHeader}>
-          <h2 style={styles.limitsTitle}>Spending Limits</h2>
+          <h2 style={styles.limitsTitle}>Category Budgets</h2>
           <button style={styles.addButton} onClick={openModal}>
             <Plus size={20} />
-            Add New Budget
+            Add Category Budget
           </button>
         </div>
 
         <div style={styles.budgetList}>
           {budgets.length === 0 ? (
             <div style={{ textAlign: "center", padding: "40px", color: "#89a594" }}>
-              No budgets yet. Click "Add New Budget" to create one.
+              No category budgets yet. Click "Add Category Budget" to create one.
             </div>
           ) : (
             budgets.map((budget) => {
@@ -293,10 +423,46 @@ export default function BudgetsPage() {
           )}
         </div>
 
+        {/* Set Monthly Limit Modal */}
+        {limitModalOpen && (
+          <div style={styles.modalOverlay} onClick={closeLimitModal}>
+            <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+              <h2 style={styles.modalTitle}>{monthlyBudgetLimit ? 'Edit' : 'Set'} Monthly Budget Limit</h2>
+              <div style={styles.infoBox}>
+                Set your total monthly spending limit. The sum of all category budgets cannot exceed this amount.
+              </div>
+              <form onSubmit={handleSetMonthlyLimit}>
+                <label htmlFor="monthlyLimit" style={styles.modalLabel}>Monthly Budget Limit (₹) *</label>
+                <input
+                  id="monthlyLimit"
+                  type="number"
+                  style={styles.modalInput}
+                  value={tempMonthlyLimit}
+                  onChange={(e) => setTempMonthlyLimit(e.target.value)}
+                  placeholder="e.g., 5000"
+                  min="0"
+                  step="0.01"
+                  required
+                />
+                <div style={styles.modalButtons}>
+                  <button type="button" style={styles.modalCancelButton} onClick={closeLimitModal}>Cancel</button>
+                  <button type="submit" style={styles.modalSaveButton}>Save</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Add Budget Modal */}
         {modalOpen && (
           <div style={styles.modalOverlay} onClick={closeModal}>
             <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-              <h2 style={styles.modalTitle}>Add New Budget</h2>
+              <h2 style={styles.modalTitle}>Add Category Budget</h2>
+              {monthlyBudgetLimit && (
+                <div style={styles.infoBox}>
+                  Available: ₹{(monthlyBudgetLimit - totalAllocated).toFixed(2)} of ₹{monthlyBudgetLimit.toFixed(2)}
+                </div>
+              )}
               <form onSubmit={handleAddBudget}>
                 <label htmlFor="budgetCategory" style={styles.modalLabel}>Category *</label>
                 <select id="budgetCategory" style={styles.modalInput} value={newBudgetCategory} onChange={(e) => setNewBudgetCategory(e.target.value)} required>
@@ -314,6 +480,7 @@ export default function BudgetsPage() {
           </div>
         )}
 
+        {/* Edit Budget Modal */}
         {editModalOpen && (
           <div style={styles.modalOverlay} onClick={closeEditModal}>
             <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>

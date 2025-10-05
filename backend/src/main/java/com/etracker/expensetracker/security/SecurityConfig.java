@@ -59,6 +59,9 @@ public class SecurityConfig {
         return source;
     }
 
+    
+
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -68,9 +71,11 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/accounts/**").authenticated()
+                .requestMatchers("/api/user/**").authenticated() 
                 .requestMatchers("/api/overview/**").authenticated()
                 .requestMatchers("/api/budgets/**").authenticated()
                 .requestMatchers("/api/expenses/**").authenticated()
+                .requestMatchers("/api/user/**").authenticated()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider());

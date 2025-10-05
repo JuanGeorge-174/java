@@ -120,10 +120,12 @@ public class OverviewController {
             resp.put("spendingThisMonth", spendingByCategory);
             resp.put("recentExpenses", recentExpenses);
             resp.put("accounts", accounts);
+            resp.put("monthlyBudgetLimit", user.getMonthlyBudgetLimit());
 
             System.out.println("Response ready - Budgets: " + budgets.size() + 
                              ", Categories: " + spendingByCategory.size() + 
-                             ", Recent: " + recentExpenses.size());
+                             ", Recent: " + recentExpenses.size() +
+                             ", Monthly Limit: " + user.getMonthlyBudgetLimit());
 
             return ResponseEntity.ok(resp);
             

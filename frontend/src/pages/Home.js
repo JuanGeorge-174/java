@@ -11,7 +11,8 @@ function Home() {
     budgets: [],
     spendingThisMonth: {},
     recentExpenses: [],
-    accounts: []
+    accounts: [],
+    monthlyBudgetLimit: null
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -127,7 +128,7 @@ function Home() {
   };
 
   const totalSpending = Object.values(data.spendingThisMonth).reduce((sum, amount) => sum + amount, 0);
-  const totalBudget = data.budgets.reduce((sum, budget) => sum + (budget.amount || 0), 0);
+  const totalBudget = data.monthlyBudgetLimit || data.budgets.reduce((sum, budget) => sum + (budget.amount || 0), 0);
   const percentageSpent = totalBudget > 0 ? (totalSpending / totalBudget * 100).toFixed(0) : 0;
 
   console.log('💰 Calculations:', {
@@ -161,6 +162,7 @@ function Home() {
           <div className="logo">Finance</div>
           <ul className="menu">
             <li><NavLink to="/home" className={({ isActive }) => isActive ? "active" : ""}>Home</NavLink></li>
+            <li><NavLink to="/expense" className={({ isActive }) => isActive ? "active" : ""}>Expense</NavLink></li>
             <li><NavLink to="/transactions" className={({ isActive }) => isActive ? "active" : ""}>Transactions</NavLink></li>
             <li><NavLink to="/budgets" className={({ isActive }) => isActive ? "active" : ""}>Budgets</NavLink></li>
             <li><NavLink to="/account" className={({ isActive }) => isActive ? "active" : ""}>Account</NavLink></li>
@@ -188,6 +190,7 @@ function Home() {
           <div className="logo">Finance</div>
           <ul className="menu">
             <li><NavLink to="/home" className={({ isActive }) => isActive ? "active" : ""}>Home</NavLink></li>
+            <li><NavLink to="/expense" className={({ isActive }) => isActive ? "active" : ""}>Expense</NavLink></li>
             <li><NavLink to="/transactions" className={({ isActive }) => isActive ? "active" : ""}>Transactions</NavLink></li>
             <li><NavLink to="/budgets" className={({ isActive }) => isActive ? "active" : ""}>Budgets</NavLink></li>
             <li><NavLink to="/account" className={({ isActive }) => isActive ? "active" : ""}>Account</NavLink></li>
@@ -229,6 +232,7 @@ function Home() {
         <div className="logo">Finance</div>
         <ul className="menu">
           <li><NavLink to="/home" className={({ isActive }) => isActive ? "active" : ""}>Home</NavLink></li>
+          <li><NavLink to="/expense" className={({ isActive }) => isActive ? "active" : ""}>Expense</NavLink></li>
           <li><NavLink to="/transactions" className={({ isActive }) => isActive ? "active" : ""}>Transactions</NavLink></li>
           <li><NavLink to="/budgets" className={({ isActive }) => isActive ? "active" : ""}>Budgets</NavLink></li>
           <li><NavLink to="/account" className={({ isActive }) => isActive ? "active" : ""}>Account</NavLink></li>

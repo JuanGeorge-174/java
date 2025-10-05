@@ -22,7 +22,10 @@ public class User {
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role")
     private Set<String> roles = new HashSet<>();
+    @Column(name = "monthly_budget_limit")
 
+    
+private Double monthlyBudgetLimit;
     public Long getId() {
         return id;
     }
@@ -54,4 +57,12 @@ public class User {
     public void setRoles(Set<String> roles) {
         this.roles = roles;
     }
+    public Double getMonthlyBudgetLimit() {
+        return monthlyBudgetLimit;
+    }
+
+    public void setMonthlyBudgetLimit(Double monthlyBudgetLimit) {
+        this.monthlyBudgetLimit = monthlyBudgetLimit;
+    }
+    
 }
