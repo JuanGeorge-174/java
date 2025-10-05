@@ -4,32 +4,31 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
-import java.util.List;
 
 @Entity
 @Table(name = "budgets")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Budget {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id 
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_id")
-    private com.etracker.expensetracker.model.User user;
+    private User user;
 
     @Column(nullable = false)
     private String name;
+
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private Category category;
 
     @Column(nullable = false)
     private Double amount;
 
     @Column(nullable = false)
-    private String period = "monthly"; // monthly, yearly, one-time
-
-    @ElementCollection
-    @CollectionTable(name = "budget_categories", joinColumns = @JoinColumn(name = "budget_id"))
-    @Column(name = "category")
-    private List<String> categories;
+    private String period = "monthly";
 
     private Instant startDate = Instant.now();
 

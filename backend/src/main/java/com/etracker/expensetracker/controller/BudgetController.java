@@ -2,8 +2,11 @@ package com.etracker.expensetracker.controller;
 
 import com.etracker.expensetracker.dto.BudgetRequest;
 import com.etracker.expensetracker.model.Budget;
+import com.etracker.expensetracker.model.Category;
 import com.etracker.expensetracker.model.User;
+import com.etracker.expensetracker.repository.CategoryRepository;
 import com.etracker.expensetracker.service.BudgetService;
+import com.etracker.expensetracker.service.CategoryService;
 import com.etracker.expensetracker.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +22,7 @@ import java.util.List;
 public class BudgetController {
     private final BudgetService budgetService;
     private final UserService userService;
+    private final CategoryService categoryService;
 
     @GetMapping
     public ResponseEntity<List<Budget>> getAllBudgets() {
@@ -32,12 +36,14 @@ public class BudgetController {
         User user = userService.getCurrentUser()
             .orElseThrow(() -> new RuntimeException("User not authenticated"));
         
+        Category category = categoryService.createCategory(request.getName());
+        
         Budget budget = new Budget();
         budget.setUser(user);
         budget.setName(request.getName());
+        budget.setCategory(category);
         budget.setAmount(request.getAmount());
         budget.setPeriod(request.getPeriod() != null ? request.getPeriod() : "monthly");
-        budget.setCategories(request.getCategories());
         budget.setStartDate(Instant.now());
         budget.setAlertThresholdPercent(request.getAlertThresholdPercent() != null ? request.getAlertThresholdPercent() : 80);
         

@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
-import { Search, Plus, Bell, ChevronDown } from "lucide-react";
+import { Plus, ChevronDown } from "lucide-react";
+import { useCategories } from "../hooks/useCategories";
+import "../styles/Transaction.css";
 
 export default function Transaction() {
   const [transactions, setTransactions] = useState([]);
   const [accounts, setAccounts] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const { categories } = useCategories();
+  const [dateFilterType, setDateFilterType] = useState("range");
   const [dateRange, setDateRange] = useState("Last 30 days");
-  const [category, setCategory] = useState("All");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [sortBy, setSortBy] = useState("Newest");
 
   // Modal states
@@ -18,6 +22,8 @@ export default function Transaction() {
   const [accountFrom, setAccountFrom] = useState("");
   const [accountTo, setAccountTo] = useState("");
   const [note, setNote] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
 
   useEffect(() => {
     fetchTransactions();
@@ -53,8 +59,16 @@ export default function Transaction() {
   };
 
   const filterByDateRange = useCallback((dateStr) => {
-    const today = new Date();
     const date = new Date(dateStr);
+    
+    if (dateFilterType === "custom" && startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      return date >= start && date <= end;
+    }
+
+    const today = new Date();
     switch (dateRange) {
       case "Last 30 days":
         return (today - date) / (1000 * 3600 * 24) <= 30;
@@ -67,7 +81,7 @@ export default function Transaction() {
       default:
         return true;
     }
-  }, [dateRange]);
+  }, [dateFilterType, dateRange, startDate, endDate]);
 
   const filteredTransactions = useMemo(() => {
     return transactions
@@ -79,9 +93,13 @@ export default function Transaction() {
         if (sortBy === "Lowest Amount") return a.amount - b.amount;
         return 0;
       });
-  }, [transactions, dateRange, sortBy, filterByDateRange]);
+  }, [transactions, sortBy, filterByDateRange]);
 
-  const openModal = () => setModalOpen(true);
+  const openModal = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setSelectedDate(today);
+    setModalOpen(true);
+  };
   
   const closeModal = () => {
     setModalOpen(false);
@@ -90,6 +108,8 @@ export default function Transaction() {
     setAccountFrom("");
     setAccountTo("");
     setNote("");
+    setSelectedDate("");
+    setSelectedCategory("");
   };
 
   const handleSubmit = async (e) => {
@@ -106,9 +126,18 @@ export default function Transaction() {
       return;
     }
 
+    if (!selectedDate) {
+      alert("Please select a date");
+      return;
+    }
+
     if (transactionType === "transfer") {
       if (!accountFrom || !accountTo) {
         alert("Please select both accounts for transfer");
+        return;
+      }
+      if (accountFrom === accountTo) {
+        alert("Cannot transfer to the same account");
         return;
       }
     } else {
@@ -116,6 +145,15 @@ export default function Transaction() {
         alert("Please select an account");
         return;
       }
+      if (!selectedCategory) {
+        alert("Please select a category");
+        return;
+      }
+    }
+
+    let finalNote = note;
+    if (transactionType !== "transfer" && selectedCategory) {
+      finalNote = `[${selectedCategory}] ${note}`.trim();
     }
 
     const payload = {
@@ -123,7 +161,7 @@ export default function Transaction() {
       amount: parseFloat(amount),
       accountFromId: accountFrom ? parseInt(accountFrom) : null,
       accountToId: accountTo ? parseInt(accountTo) : null,
-      note: note || null
+      note: finalNote || null
     };
 
     try {
@@ -135,7 +173,8 @@ export default function Transaction() {
       });
 
       await fetchTransactions();
-      await fetchAccounts(); // Refresh accounts to show updated balances
+      await fetchAccounts();
+      window.dispatchEvent(new Event('expenseUpdated'));
       closeModal();
     } catch (err) {
       console.error("Error creating transaction:", err);
@@ -148,300 +187,121 @@ export default function Transaction() {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
-  const styles = {
-    app: {
-      fontFamily: `"Segoe UI", Tahoma, Geneva, Verdana, sans-serif`,
-      backgroundColor: "#1a241d",
-      color: "#ddd",
-      minHeight: "100vh",
-      margin: 0,
-      padding: 0,
-    },
-    mainContent: {
-      flexGrow: 1,
-      overflowY: "auto",
-      marginTop: 100,
-      padding: "32px 40px",
-      boxSizing: "border-box",
-      display: "flex",
-      flexDirection: "column",
-    },
-    mainHeader: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 34,
-      flexWrap: "wrap",
-    },
-    title: {
-      fontWeight: 500,
-      fontSize: "1.75rem",
-      color: "white",
-      userSelect: "none",
-    },
-    newTxnBtn: {
-      backgroundColor: "#75dc85",
-      color: "#152018",
-      padding: "10px 16px",
-      borderRadius: 8,
-      border: "none",
-      cursor: "pointer",
-      fontWeight: "600",
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      userSelect: "none",
-      transition: "background-color 0.2s ease",
-    },
-    searchWrapper: {
-      position: "relative",
-      marginBottom: 26,
-    },
-    searchInput: {
-      width: "100%",
-      backgroundColor: "#152018",
-      border: "1px solid #25633d",
-      borderRadius: 14,
-      padding: "12px 20px 12px 45px",
-      fontSize: "1.1rem",
-      color: "#ddd",
-      outline: "none",
-      fontFamily: `"Segoe UI", Tahoma, Geneva, Verdana, sans-serif`,
-      userSelect: "none",
-    },
-    searchIcon: {
-      position: "absolute",
-      left: 15,
-      top: "50%",
-      transform: "translateY(-50%)",
-      color: "#a3b8a5",
-      userSelect: "none",
-    },
-    filters: {
-      display: "flex",
-      gap: 20,
-      marginBottom: 26,
-      flexWrap: "wrap",
-    },
-    filterItem: {
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      color: "#a3b8a5",
-      fontSize: "1rem",
-      fontWeight: "500",
-      userSelect: "none",
-      position: "relative",
-    },
-    select: {
-      appearance: "none",
-      WebkitAppearance: "none",
-      MozAppearance: "none",
-      paddingRight: 50,
-      backgroundColor: "#152018",
-      border: "1px solid #25633d",
-      borderRadius: 8,
-      padding: "8px 12px",
-      textAlign: "center",
-      color: "#ddd",
-      cursor: "pointer",
-      fontSize: "1rem",
-      outline: "none",
-      userSelect: "none",
-    },
-    dropdownIcon: {
-      position: "absolute",
-      right: 12,
-      top: "50%",
-      transform: "translateY(-50%)",
-      color: "#a3b8a5",
-      pointerEvents: "none",
-      userSelect: "none",
-    },
-    tableWrapper: {
-      backgroundColor: "#222936",
-      borderRadius: 14,
-      padding: "26px 28px",
-      overflow: "hidden",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
-      color: "#a3b8a5",
-      userSelect: "none",
-    },
-    tableTitle: {
-      marginBottom: 28,
-      fontSize: "1.2rem",
-      fontWeight: 500,
-      color: "#a3b8a5",
-      userSelect: "none",
-    },
-    table: {
-      width: "100%",
-      borderCollapse: "collapse",
-    },
-    td: {
-      padding: "14px 0",
-      fontSize: "1.1rem",
-      color: "#a3b8a5",
-    },
-    modalOverlay: {
-      position: "fixed",
-      top: 0,
-      left: 0,
-      width: "100vw",
-      height: "100vh",
-      backgroundColor: "rgba(26, 36, 29, 0.75)",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 1000,
-    },
-    modalContent: {
-      backgroundColor: "#222936",
-      color: "#ddd",
-      padding: 32,
-      borderRadius: 14,
-      width: 450,
-      maxHeight: "90vh",
-      overflowY: "auto",
-      boxShadow: "0 4px 20px rgba(0,0,0,0.65)",
-      userSelect: "none",
-    },
-    modalTitle: {
-      marginBottom: 20,
-      fontSize: "1.5rem",
-      fontWeight: 600,
-    },
-    formLabel: {
-      display: "block",
-      marginBottom: 12,
-      fontSize: "1rem",
-    },
-    formInput: {
-      width: "100%",
-      padding: "8px 12px",
-      borderRadius: 8,
-      border: "1px solid #25633d",
-      backgroundColor: "#152018",
-      color: "#ddd",
-      fontSize: "1rem",
-      outline: "none",
-      marginTop: 4,
-      marginBottom: 20,
-      boxSizing: "border-box",
-    },
-    formButtons: {
-      display: "flex",
-      justifyContent: "flex-end",
-      gap: 16,
-    },
-    submitBtn: {
-      backgroundColor: "#75dc85",
-      color: "#152018",
-      border: "none",
-      padding: "10px 24px",
-      borderRadius: 8,
-      fontWeight: 600,
-      cursor: "pointer",
-      userSelect: "none",
-      transition: "background-color 0.25s ease",
-    },
-    cancelBtn: {
-      backgroundColor: "transparent",
-      border: "1px solid #a3b8a5",
-      color: "#a3b8a5",
-      padding: "10px 24px",
-      borderRadius: 8,
-      fontWeight: 600,
-      cursor: "pointer",
-      userSelect: "none",
-      transition: "background-color 0.25s ease",
-    },
-    typeSelector: {
-      display: "flex",
-      gap: 12,
-      marginBottom: 20,
-    },
-    typeButton: {
-      flex: 1,
-      padding: "10px",
-      border: "1px solid #25633d",
-      backgroundColor: "#152018",
-      color: "#a3b8a5",
-      borderRadius: 8,
-      cursor: "pointer",
-      fontWeight: 600,
-      transition: "all 0.2s ease",
-    },
-    typeButtonActive: {
-      backgroundColor: "#75dc85",
-      color: "#152018",
-      border: "1px solid #75dc85",
-    },
+  const extractCategory = (noteText) => {
+    if (!noteText) return "-";
+    const match = noteText.match(/^\[([^\]]+)\]/);
+    return match ? match[1] : "-";
   };
 
   return (
-    <div style={styles.app}>
+    <div className="transaction-app">
       <Navbar />
-      <main style={styles.mainContent}>
-        <div style={styles.mainHeader}>
-          <h2 style={styles.title}>Transactions</h2>
-          <button style={styles.newTxnBtn} onClick={openModal}>
+      <main className="transaction-main-content">
+        <div className="transaction-main-header">
+          <h2 className="transaction-title">Transactions</h2>
+          <button className="new-txn-btn" onClick={openModal}>
             <Plus />
             <span>New Transaction</span>
           </button>
         </div>
 
-        <div style={styles.filters}>
-          <div style={{ ...styles.filterItem, position: "relative" }}>
-            <label htmlFor="dateRange">Date Range:</label>
-            <select id="dateRange" value={dateRange} onChange={(e) => setDateRange(e.target.value)} style={styles.select}>
-              <option>Last 30 days</option>
-              <option>Last 60 days</option>
-              <option>Last 90 days</option>
-              <option>This year</option>
+        <div className="transaction-filters">
+          <div className="filter-item">
+            <label htmlFor="dateFilterType">Filter:</label>
+            <select 
+              id="dateFilterType" 
+              value={dateFilterType} 
+              onChange={(e) => setDateFilterType(e.target.value)} 
+              className="filter-select"
+            >
+              <option value="range">Quick Range</option>
+              <option value="custom">Custom Dates</option>
             </select>
-            <ChevronDown style={styles.dropdownIcon} />
+            <ChevronDown className="dropdown-icon" />
           </div>
 
-          <div style={{ ...styles.filterItem, position: "relative" }}>
-            <label htmlFor="sortBy">Sort by:</label>
-            <select id="sortBy" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={styles.select}>
+          {dateFilterType === "range" ? (
+            <div className="filter-item">
+              <label htmlFor="dateRange">Period:</label>
+              <select 
+                id="dateRange" 
+                value={dateRange} 
+                onChange={(e) => setDateRange(e.target.value)} 
+                className="filter-select"
+              >
+                <option>Last 30 days</option>
+                <option>Last 60 days</option>
+                <option>Last 90 days</option>
+                <option>This year</option>
+              </select>
+              <ChevronDown className="dropdown-icon" />
+            </div>
+          ) : (
+            <div className="date-range-inputs">
+              <input
+                type="date"
+                className="date-input"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                placeholder="Start Date"
+              />
+              <span style={{ color: "#a3b8a5" }}>to</span>
+              <input
+                type="date"
+                className="date-input"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                placeholder="End Date"
+              />
+            </div>
+          )}
+
+          <div className="filter-item">
+            <label htmlFor="sortBy">Sort:</label>
+            <select 
+              id="sortBy" 
+              value={sortBy} 
+              onChange={(e) => setSortBy(e.target.value)} 
+              className="filter-select"
+            >
               <option>Newest</option>
               <option>Oldest</option>
               <option>Highest Amount</option>
               <option>Lowest Amount</option>
             </select>
-            <ChevronDown style={styles.dropdownIcon} />
+            <ChevronDown className="dropdown-icon" />
           </div>
         </div>
 
-        <div style={styles.tableWrapper}>
-          <div style={styles.tableTitle}>Recent Transactions</div>
-          <table style={styles.table}>
+        <div className="table-wrapper">
+          <div className="table-title">Recent Transactions</div>
+          <table className="transaction-table">
             <thead>
               <tr>
-                <th style={styles.td}>Date</th>
-                <th style={styles.td}>Type</th>
-                <th style={styles.td}>Account</th>
-                <th style={styles.td}>Note</th>
-                <th style={{ ...styles.td, textAlign: "right" }}>Amount</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Account</th>
+                <th>Note</th>
+                <th style={{ textAlign: "right" }}>Amount</th>
               </tr>
             </thead>
             <tbody>
               {filteredTransactions.length === 0 && (
                 <tr>
-                  <td colSpan={5} style={{ ...styles.td, textAlign: "center" }}>
-                    No transactions found.
+                  <td colSpan={6} className="empty-state">
+                    No transactions found for the selected period.
                   </td>
                 </tr>
               )}
-              {filteredTransactions.map((txn, idx) => (
-                <tr key={txn.id} style={{ borderBottom: idx === filteredTransactions.length - 1 ? "none" : "1px solid #3a424c" }}>
-                  <td style={styles.td}>{formatDate(txn.date)}</td>
-                  <td style={{ ...styles.td, fontWeight: 600, color: "#c8d6c9", textTransform: "capitalize" }}>{txn.type}</td>
-                  <td style={styles.td}>{txn.accountFrom?.name || "-"}</td>
-                  <td style={styles.td}>{txn.note || "-"}</td>
-                  <td style={{ ...styles.td, fontWeight: 600, color: txn.type === "income" ? "#75dc85" : "#ff6b6b", textAlign: "right" }}>
+              {filteredTransactions.map((txn) => (
+                <tr key={txn.id}>
+                  <td>{formatDate(txn.date)}</td>
+                  <td className="td-type">{txn.type}</td>
+                  <td>{extractCategory(txn.note)}</td>
+                  <td>{txn.accountFrom?.name || "-"}</td>
+                  <td>{txn.note?.replace(/^\[[^\]]+\]\s*/, "") || "-"}</td>
+                  <td className={`td-amount ${txn.type === "income" ? "amount-income" : "amount-expense"}`}>
                     {txn.type === "income" ? "+" : "-"}₹{txn.amount.toFixed(2)}
                   </td>
                 </tr>
@@ -452,42 +312,51 @@ export default function Transaction() {
       </main>
 
       {modalOpen && (
-        <div style={styles.modalOverlay} onClick={closeModal}>
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>Add New Transaction</h3>
-            <form onSubmit={handleSubmit}>
-              <div style={styles.typeSelector}>
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Add New Transaction</h3>
+            <form onSubmit={handleSubmit} className="transaction-form">
+              <div className="type-selector">
                 <button
                   type="button"
-                  style={{...styles.typeButton, ...(transactionType === "expense" ? styles.typeButtonActive : {})}}
+                  className={`type-button ${transactionType === "expense" ? "type-button-active" : ""}`}
                   onClick={() => setTransactionType("expense")}
                 >
                   Expense
                 </button>
                 <button
                   type="button"
-                  style={{...styles.typeButton, ...(transactionType === "income" ? styles.typeButtonActive : {})}}
+                  className={`type-button ${transactionType === "income" ? "type-button-active" : ""}`}
                   onClick={() => setTransactionType("income")}
                 >
                   Income
                 </button>
                 <button
                   type="button"
-                  style={{...styles.typeButton, ...(transactionType === "transfer" ? styles.typeButtonActive : {})}}
+                  className={`type-button ${transactionType === "transfer" ? "type-button-active" : ""}`}
                   onClick={() => setTransactionType("transfer")}
                 >
                   Transfer
                 </button>
               </div>
 
-              <label style={styles.formLabel}>
+              <label>
+                Date *
+                <input
+                  required
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                />
+              </label>
+
+              <label>
                 Amount *
                 <input
                   required
                   type="number"
                   step="0.01"
                   min="0.01"
-                  style={styles.formInput}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
@@ -496,11 +365,10 @@ export default function Transaction() {
 
               {transactionType === "transfer" ? (
                 <>
-                  <label style={styles.formLabel}>
+                  <label>
                     From Account *
                     <select
                       required
-                      style={styles.formInput}
                       value={accountFrom}
                       onChange={(e) => setAccountFrom(e.target.value)}
                     >
@@ -511,11 +379,10 @@ export default function Transaction() {
                     </select>
                   </label>
 
-                  <label style={styles.formLabel}>
+                  <label>
                     To Account *
                     <select
                       required
-                      style={styles.formInput}
                       value={accountTo}
                       onChange={(e) => setAccountTo(e.target.value)}
                     >
@@ -527,38 +394,52 @@ export default function Transaction() {
                   </label>
                 </>
               ) : (
-                <label style={styles.formLabel}>
-                  Account *
-                  <select
-                    required
-                    style={styles.formInput}
-                    value={accountFrom}
-                    onChange={(e) => setAccountFrom(e.target.value)}
-                  >
-                    <option value="">Select Account</option>
-                    {accounts.map(acc => (
-                      <option key={acc.id} value={acc.id}>{acc.name}</option>
-                    ))}
-                  </select>
-                </label>
+                <>
+                  <label>
+                    Account *
+                    <select
+                      required
+                      value={accountFrom}
+                      onChange={(e) => setAccountFrom(e.target.value)}
+                    >
+                      <option value="">Select Account</option>
+                      {accounts.map(acc => (
+                        <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    Category *
+                    <select
+                      required
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                    >
+                      <option value="">Select Category</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                </>
               )}
 
-              <label style={styles.formLabel}>
+              <label>
                 Note (Optional)
                 <input
                   type="text"
-                  style={styles.formInput}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="e.g., Grocery shopping"
+                  placeholder="e.g., Grocery shopping at market"
                 />
               </label>
 
-              <section style={styles.formButtons}>
-                <button type="button" style={styles.cancelBtn} onClick={closeModal}>
+              <section className="form-buttons">
+                <button type="button" className="cancel-btn" onClick={closeModal}>
                   Cancel
                 </button>
-                <button type="submit" style={styles.submitBtn}>
+                <button type="submit" className="submit-btn">
                   Add Transaction
                 </button>
               </section>

@@ -87,9 +87,15 @@ function Home() {
       console.log('✅ Response received:', response);
       console.log('📊 Response status:', response.status);
       console.log('📦 Response data:', response.data);
+      console.log('🔍 DETAILED DATA:');
+      console.log('  - Budgets:', response.data?.budgets);
+      console.log('  - Spending this month:', response.data?.spendingThisMonth);
+      console.log('  - Recent expenses:', response.data?.recentExpenses);
+      console.log('  - Accounts:', response.data?.accounts);
       console.log('📋 Data structure:', {
         budgets: response.data?.budgets?.length || 0,
         spendingKeys: Object.keys(response.data?.spendingThisMonth || {}),
+        spendingValues: Object.values(response.data?.spendingThisMonth || {}),
         recentExpenses: response.data?.recentExpenses?.length || 0,
         accounts: response.data?.accounts?.length || 0
       });
@@ -129,7 +135,10 @@ function Home() {
     totalBudget,
     percentageSpent,
     budgetsCount: data.budgets.length,
-    expensesCount: data.recentExpenses.length
+    expensesCount: data.recentExpenses.length,
+    spendingByCategoryKeys: Object.keys(data.spendingThisMonth),
+    spendingByCategoryValues: Object.values(data.spendingThisMonth),
+    fullSpendingData: data.spendingThisMonth
   });
 
   const formatCurrency = (amount) => {
@@ -152,7 +161,6 @@ function Home() {
           <div className="logo">Finance</div>
           <ul className="menu">
             <li><NavLink to="/home" className={({ isActive }) => isActive ? "active" : ""}>Home</NavLink></li>
-            <li><NavLink to="/expense" className={({ isActive }) => isActive ? "active" : ""}>Expense</NavLink></li>
             <li><NavLink to="/transactions" className={({ isActive }) => isActive ? "active" : ""}>Transactions</NavLink></li>
             <li><NavLink to="/budgets" className={({ isActive }) => isActive ? "active" : ""}>Budgets</NavLink></li>
             <li><NavLink to="/account" className={({ isActive }) => isActive ? "active" : ""}>Account</NavLink></li>
@@ -180,7 +188,6 @@ function Home() {
           <div className="logo">Finance</div>
           <ul className="menu">
             <li><NavLink to="/home" className={({ isActive }) => isActive ? "active" : ""}>Home</NavLink></li>
-            <li><NavLink to="/expense" className={({ isActive }) => isActive ? "active" : ""}>Expense</NavLink></li>
             <li><NavLink to="/transactions" className={({ isActive }) => isActive ? "active" : ""}>Transactions</NavLink></li>
             <li><NavLink to="/budgets" className={({ isActive }) => isActive ? "active" : ""}>Budgets</NavLink></li>
             <li><NavLink to="/account" className={({ isActive }) => isActive ? "active" : ""}>Account</NavLink></li>
@@ -222,7 +229,6 @@ function Home() {
         <div className="logo">Finance</div>
         <ul className="menu">
           <li><NavLink to="/home" className={({ isActive }) => isActive ? "active" : ""}>Home</NavLink></li>
-          <li><NavLink to="/expense" className={({ isActive }) => isActive ? "active" : ""}>Expense</NavLink></li>
           <li><NavLink to="/transactions" className={({ isActive }) => isActive ? "active" : ""}>Transactions</NavLink></li>
           <li><NavLink to="/budgets" className={({ isActive }) => isActive ? "active" : ""}>Budgets</NavLink></li>
           <li><NavLink to="/account" className={({ isActive }) => isActive ? "active" : ""}>Account</NavLink></li>
@@ -268,15 +274,9 @@ function Home() {
               </div>
             ) : (
               data.budgets.map((budget, index) => {
-                let spent = 0;
-                if (budget.categories && Array.isArray(budget.categories)) {
-                  budget.categories.forEach(category => {
-                    spent += data.spendingThisMonth[category] || 0;
-                  });
-                } else {
-                  spent = data.spendingThisMonth[budget.name] || 0;
-                }
-                
+                // The backend already calculated spending by category in spendingThisMonth
+                // Just look it up directly by budget name
+                const spent = data.spendingThisMonth[budget.name] || 0;
                 const limit = budget.amount || 0;
                 const percentage = limit > 0 ? (spent / limit * 100).toFixed(0) : 0;
 
@@ -305,13 +305,27 @@ function Home() {
             </div>
           ) : (
             <ul>
-              {data.recentExpenses.map((expense, index) => (
-                <li key={index}>
-                  <span>{expense.category || 'Uncategorized'}</span>
-                  <div>{expense.description || 'No description'}</div>
-                  <span className="amount">- {formatCurrency(expense.amount)}</span>
-                </li>
-              ))}
+              {data.recentExpenses.map((expense, index) => {
+                // Extract category from note if it exists
+                let category = 'Uncategorized';
+                let description = expense.description || expense.note || 'No description';
+                
+                if (description) {
+                  const match = description.match(/^\[([^\]]+)\]\s*(.*)/);
+                  if (match) {
+                    category = match[1];
+                    description = match[2] || description;
+                  }
+                }
+                
+                return (
+                  <li key={index}>
+                    <span>{category}</span>
+                    <div>{description}</div>
+                    <span className="amount">- {formatCurrency(expense.amount)}</span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

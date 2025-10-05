@@ -48,42 +48,34 @@ body, html {
   margin: 0;
   flex-grow: 1;
 }
-.menu li a {
-  color: #a3b8a5;         /* normal text color */
-  text-decoration: none;  /* remove underline */
-  display: flex;
-  align-items: center;
-  padding: 13px 10px;
-  border-radius: 8px;
-  transition: background-color 0.2s, color 0.2s;
-}
-
-.menu li a.active, 
-.menu li a:hover {
-  background-color: #25633d;
-  color: #75dc85;
-  font-weight: 600;
-  text-decoration: none;
-}
-
 .menu li {
-  padding: 13px 10px;
   margin-bottom: 18px;
   font-size: 1rem;
-  color: #a3b8a5;
   cursor: pointer;
   border-radius: 8px;
   transition: background-color 0.2s, color 0.2s;
-  display: flex;
-  align-items: center;
+  list-style: none;
 }
 
-.menu li.active, 
-.menu li:hover {
+.menu li a {
+  display: flex;
+  align-items: center;
+  padding: 13px 10px;
+  color: #a3b8a5;
+  text-decoration: none;
+  border-radius: 8px;
+  width: 100%;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Hover & Active State */
+.menu li:hover a
+ {
   background-color: #25633d;
   color: #75dc85;
   font-weight: 600;
 }
+
 
 /* Main Content */
 .main-content {
@@ -191,7 +183,13 @@ body, html {
   overflow: hidden;
   margin: 10px 0 18px;
 }
+.progress-fill.orange {
+  background-color: #ff8c42;
+}
 
+.progress-fill.red {
+  background-color: #dc2626;
+}
 .progress-fill {
   height: 100%;
   background-color: #75dc85;

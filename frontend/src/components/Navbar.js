@@ -10,7 +10,7 @@ function Navbar() {
       <div className="links">
         
         <NavLink to="/home" className="navlink">Home</NavLink>
-        <NavLink to="/expense" className="navlink">Expense</NavLink>
+        
         <NavLink to="/transactions" className="navlink">Transactions</NavLink>
         <NavLink to="/budgets" className="navlink">Budgets</NavLink>
         <NavLink to="/account" className="navlink">Account</NavLink>

@@ -1,5 +1,7 @@
 package com.etracker.expensetracker;
 
+import com.etracker.expensetracker.service.CategoryService;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -24,6 +26,13 @@ public class ExpensetrackerApplication {
                     .allowedHeaders("*")
                     .allowCredentials(true);
             }
+        };
+    }
+
+    @Bean
+    CommandLineRunner initCategories(CategoryService categoryService) {
+        return args -> {
+            categoryService.initializeDefaultCategories();
         };
     }
 }
